@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-const Login = () => {
+const Login = ({ onLogin }) => {
+  // CONFIGURATION: Change this if your backend runs on a different port or prefix
+  const BASE_URL = 'http://127.0.0.1:5000/api/auth';
+
   const [activeRole, setActiveRole] = useState('student');
   const [isRegistering, setIsRegistering] = useState(false);
   
@@ -12,16 +16,118 @@ const Login = () => {
   const [fullName, setFullName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [institution, setInstitution] = useState('');
+  const [rollNumber, setRollNumber] = useState('');
+  const [facultyId, setFacultyId] = useState('');
   const [regPassword, setRegPassword] = useState('');
-  // const [confirmPassword, setConfirmPassword] = useState('');
-  // const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const handleSubmit = (e) => {
+  const navigate = useNavigate();
+
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    if (!email || !password) {
+        alert("Please enter both email and password.");
+        return;
+    }
 
+    try {
+      const response = await fetch(`${BASE_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        }),
+      });
 
-    // here we need to submit data to froontend using fetch
-    console.log('Form submitted');
+      const data = await response.json();
+
+      if (response.ok) {
+        // 1. Save Token
+        localStorage.setItem('token', data.access_token);
+        
+        // 2. Save User Info (optional, but helpful)
+        localStorage.setItem('user', JSON.stringify(data.user));
+
+        // 3. Update App State
+        if (onLogin) onLogin(data.user.role);
+
+        // 4. Navigate based on the role returned from backend
+        if (data.user.role === 'student') {
+            navigate('/student/dashboard');
+        } else {
+            navigate('/faculty/dashboard');
+        }
+      } else {
+        alert(data.error || "Login failed");
+      }
+    } catch (error) {
+      console.error("Login Error:", error);
+      alert("An error occurred while connecting to the server.");
+    }
+  };
+
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Basic Frontend Validation
+    if (!fullName || !regEmail || !institution || !regPassword) {
+        alert("Please fill in all required fields.");
+        return;
+    }
+
+    if (activeRole === 'student' && !rollNumber) {
+        alert("Please enter your Student Roll Number.");
+        return;
+    }
+
+    if (activeRole === 'faculty' && !facultyId) {
+        alert("Please enter your Faculty ID.");
+        return;
+    }
+
+    if (!agreedToTerms) {
+        alert("You must agree to the Terms of Service and Privacy Policy.");
+        return;
+    }
+
+    // Determine the ID based on role
+    const idToSubmit = activeRole === 'student' ? rollNumber : facultyId;
+
+    try {
+      const response = await fetch(`${BASE_URL}/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: fullName,
+          email: regEmail,
+          password: regPassword,
+          role: activeRole,
+          collage: institution, // Note: Using 'collage' to match your backend spelling
+          roll_no: idToSubmit
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.status === 201) {
+        alert("Registration successful! Please login.");
+        // Switch to login view
+        setIsRegistering(false);
+        // Optional: Pre-fill login email
+        setEmail(regEmail);
+        setPassword(''); 
+      } else {
+        alert(data.error || "Registration failed");
+      }
+    } catch (error) {
+      console.error("Registration Error:", error);
+      alert("An error occurred while connecting to the server.");
+    }
   };
 
   return (
@@ -31,23 +137,7 @@ const Login = () => {
         {/* Marketing Section */}
         <div className="space-y-6">
           <div className="flex items-center gap-3">
-             {/* Raw SVG replacement for BookOpen */}
-             <svg 
-               xmlns="http://www.w3.org/2000/svg" 
-               width="24" 
-               height="24" 
-               viewBox="0 0 24 24" 
-               fill="none" 
-               stroke="currentColor" 
-               strokeWidth="2" 
-               strokeLinecap="round" 
-               strokeLinejoin="round" 
-               className="w-10 h-10 text-[#1B3B6F]"
-             >
-               <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-               <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-             </svg>
-             <span className="text-3xl font-bold font-serif text-[#1B3B6F]">Jignasa</span>
+             <span className="text-3xl font-bold font-serif text-[#1B3B6F]">E-analytics</span>
           </div>
           <h1 className="text-5xl md:text-6xl font-serif text-[#1B3B6F] leading-tight">
             Emotion-aware classroom analytics for better learning
@@ -55,12 +145,12 @@ const Login = () => {
           <p className="text-xl text-gray-600 font-light font-serif italic">
             Empowering educators with real-time insights into student engagement and emotional well-being.
           </p>
-          <div className="w-full h-64 bg-gray-200 rounded-lg animate-pulse"></div>
         </div>
 
         {/* Auth Card */}
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full mx-auto">
           
+          {/* Role Toggle */}
           <div className="flex bg-gray-100 p-1 rounded-lg mb-8">
             <button
               onClick={() => setActiveRole('student')}
@@ -89,7 +179,7 @@ const Login = () => {
             <>
               <h2 className="text-2xl font-serif font-bold text-gray-900 mb-6">Welcome Back</h2>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
                   <input
@@ -98,6 +188,7 @@ const Login = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#1B3B6F] focus:ring-2 focus:ring-[#1B3B6F]/20 outline-none transition-all"
                     placeholder="name@university.edu"
+                    required
                   />
                 </div>
                 
@@ -112,6 +203,7 @@ const Login = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#1B3B6F] focus:ring-2 focus:ring-[#1B3B6F]/20 outline-none transition-all"
                     placeholder="••••••••"
+                    required
                   />
                 </div>
 
@@ -132,7 +224,7 @@ const Login = () => {
             <>
               <h2 className="text-2xl font-serif font-bold text-gray-900 mb-6">Create Account</h2>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleRegisterSubmit} className="space-y-4">
                 <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Full Name</label>
                     <input
@@ -141,6 +233,7 @@ const Login = () => {
                         onChange={(e) => setFullName(e.target.value)}
                         className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#1B3B6F] focus:ring-2 focus:ring-[#1B3B6F]/20 outline-none transition-all"
                         placeholder="John Doe"
+                        required
                     />
                 </div>
 
@@ -152,6 +245,7 @@ const Login = () => {
                         onChange={(e) => setRegEmail(e.target.value)}
                         className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#1B3B6F] focus:ring-2 focus:ring-[#1B3B6F]/20 outline-none transition-all"
                         placeholder="name@university.edu"
+                        required
                     />
                 </div>
 
@@ -163,30 +257,46 @@ const Login = () => {
                         onChange={(e) => setInstitution(e.target.value)}
                         className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#1B3B6F] focus:ring-2 focus:ring-[#1B3B6F]/20 outline-none transition-all"
                         placeholder="University of Technology"
+                        required
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {activeRole === 'student' ? (
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Password</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Roll Number</label>
                         <input
-                            type="password"
-                            value={regPassword}
-                            onChange={(e) => setRegPassword(e.target.value)}
+                            type="text"
+                            value={rollNumber}
+                            onChange={(e) => setRollNumber(e.target.value)}
                             className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#1B3B6F] focus:ring-2 focus:ring-[#1B3B6F]/20 outline-none transition-all"
-                            placeholder="••••••••"
+                            placeholder="Enter Student Roll Number"
+                            required
                         />
                     </div>
+                ) : (
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Confirm</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Faculty ID</label>
                         <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            type="text"
+                            value={facultyId}
+                            onChange={(e) => setFacultyId(e.target.value)}
                             className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#1B3B6F] focus:ring-2 focus:ring-[#1B3B6F]/20 outline-none transition-all"
-                            placeholder="••••••••"
+                            placeholder="Enter Faculty ID"
+                            required
                         />
                     </div>
+                )}
+
+                <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Password</label>
+                    <input
+                        type="password"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:border-[#1B3B6F] focus:ring-2 focus:ring-[#1B3B6F]/20 outline-none transition-all"
+                        placeholder="••••••••"
+                        required
+                    />
                 </div>
 
                 <div className="flex items-center gap-2">

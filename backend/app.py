@@ -1,7 +1,9 @@
 from flask import Flask
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager  # <--- 1. IMPORT THIS
 from extensions import db
+from routes.auth_route import auth_bp
 from config import SQLALCHEMY_DATABASE_URI
-from routes.auth_route import auth_bp 
 # from config import Config  <-- OPTIONAL: If you have a config.py file
 
 def create_app():
@@ -13,7 +15,11 @@ def create_app():
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     # -----------------------
 
+    app.config["JWT_SECRET_KEY"] = "$vinay5453"
+
     db.init_app(app)
+    CORS(app)
+    jwt = JWTManager(app)
     print("✅ DB connected!!")
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth') 
