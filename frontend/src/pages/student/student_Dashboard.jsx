@@ -2,6 +2,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 
 function student_Dashboard(props) {
+  
   return (
     <div>
       this is student dash board
