@@ -1,3 +1,4 @@
+from models.lecture import Lecture 
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from extensions import db
@@ -32,7 +33,9 @@ def join_group():
 
     return jsonify({"message": f"Successfully joined {group.name}!"}), 200
 
-@student_group_bp.route('/', methods=['GET']) # URL will just be /api/student/groups/
+# You need to import Lecture at the top of the file!
+
+@student_group_bp.route('/', methods=['GET']) 
 @jwt_required()
 def get_student_groups():
     claims = get_jwt()
@@ -41,8 +44,23 @@ def get_student_groups():
 
     student_id = get_jwt_identity()
     
+    # 1. Get all groups the student is in
     enrolled_groups = db.session.query(Group).join(GroupMember).filter(GroupMember.student_id == student_id).all()
-    group_list = [{"id": g.id, "name": g.name, "faculty_id": g.faculty_id} for g in enrolled_groups]
+    
+    group_list = []
+    for g in enrolled_groups:
+        # 2. Check if there is a LIVE lecture for this group right now!
+        live_lecture = Lecture.query.filter_by(group_id=g.id, status="live").first()
+        
+        group_data = {
+            "id": g.id, 
+            "name": g.name, 
+            "faculty_id": g.faculty_id,
+            "join_code": g.join_code,
+            # 3. Send the Live Lecture ID (or None if no class is running)
+            "live_lecture_id": live_lecture.id if live_lecture else None
+        }
+        group_list.append(group_data)
 
     return jsonify({"enrolled_groups": group_list}), 200
 
@@ -62,3 +80,7 @@ def leave_group(group_id):
     db.session.delete(membership)
     db.session.commit()
     return jsonify({"message": "Successfully left the group."}), 200
+
+
+
+

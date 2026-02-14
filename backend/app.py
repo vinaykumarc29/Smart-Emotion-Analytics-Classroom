@@ -8,7 +8,13 @@ from datetime import timedelta
 # --- IMPORT YOUR MODULAR BLUEPRINTS ---
 from routes.auth_route import auth_bp
 from routes.faculty.group_route import faculty_group_bp  
-from routes.student.group_route import student_group_bp  
+from routes.student.group_route import student_group_bp 
+from routes.faculty.lecture_route import faculty_lecture_bp
+from routes.student.lecture_route import student_lecture_bp
+# In backend/app.py, add these lines near the top:
+from models.lecture import Lecture
+from models.lecture_attendance import LectureAttendance
+from models.emotion_log import EmotionLog 
 
 def create_app():
     app = Flask(__name__)
@@ -38,6 +44,11 @@ def create_app():
     
     # Student group endpoints (e.g., /api/student/groups/join)
     app.register_blueprint(student_group_bp, url_prefix='/api/student/groups') 
+
+    app.register_blueprint(faculty_lecture_bp, url_prefix='/api/faculty/lectures')
+
+    # ✅ NEW: Register the Student Lecture Route
+    app.register_blueprint(student_lecture_bp, url_prefix='/api/student/lectures')
 
 
     # ... (your other blueprint registrations) ...
